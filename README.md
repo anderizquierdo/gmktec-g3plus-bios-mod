@@ -9,18 +9,29 @@ Newly visible menus (~40 entries hidden by the stock BIOS, ~140 setup pages in t
 - **Advanced:** Thermal, Platform Settings, PCI Subsystem, CSM, BCLK, ACPI (RC ACPI, D3Cold), SIO / serial console redirection, SMART, PCH-FW (ME), connectivity, debug.
 - **PCH-IO:** HD Audio, FIVR, PMC, security, thermal throttling, SerialIo / ISH / THC / SCS, PCIe clocks and EQ.
 
-**Symptom it fixes:** G3 Plus with a 32 GB DDR4 SO-DIMM won't boot — black screen, no display, fan spinning, keyboard not lighting up.
-
-| Image | Changed factory defaults | For |
+| BIOS image | Changed factory defaults | For |
 |---|---|---|
-| `images/G3_Plus076_20260112_unlocked.bin` | Hidden setup menus visible | Anyone who wants the full setup (Chipset › System Agent › Memory Configuration, Thermal, CPU VR, …) |
-| `images/G3_Plus076_20260112_unlocked_2933.bin` | Same + **Maximum Memory Frequency = 2933** | 32 GB dual-rank SO-DIMMs that don't POST at 3200 |
+| `bios/G3_Plus076_20260112_unlocked.bin` | Hidden setup menus visible | Anyone who wants the full setup (Chipset › System Agent › Memory Configuration, Thermal, CPU VR, …) |
+| `bios/G3_Plus076_20260112_unlocked_2933.bin` | Same + **Maximum Memory Frequency = 2933** | 32 GB dual-rank SO-DIMMs that don't POST at 3200 |
+
+**2933 version:** some 32 GB DDR4-3200 SO-DIMMs won't boot on the G3 Plus — black screen, no display, fan spinning, keyboard not lighting up. Lowering the memory speed to 2933 MT/s fixed it in my case (Kingston KP6FH5-MIE).
 
 Only factory-default *data* is changed (3 and 9 bytes), no code, so the settings survive **Load Defaults (F9)** and a CMOS clear.
 
 > ⚠️ **Flashing a BIOS can brick your machine**; a failed flash is only recoverable with an external SPI programmer. Tested on one unit. Use at your own risk.
 
-Unofficial, not affiliated with or endorsed by GMKtec.
+**Unofficial, not affiliated with or endorsed by GMKtec.**
+
+## Screenshots
+
+Examples of the unlocked setup pages:
+
+| | |
+|---|---|
+| ![System Agent (SA) Configuration](screenshots/system-agent-configuration.jpg) | ![Memory Configuration](screenshots/memory-configuration.jpg) |
+| Chipset › System Agent (SA) Configuration | Memory Configuration |
+| ![Memory Training Algorithms](screenshots/memory-training-algorithms.jpg) | ![Memory Configuration (continued)](screenshots/memory-configuration-more.jpg) |
+| Memory Training Algorithms | Memory Configuration (continued) |
 
 ## Compatibility
 
@@ -61,6 +72,29 @@ My G3 Plus didn't POST at all with a 32 GB **Kingston KP6FH5-MIE** (DDR4-3200, 2
 
 With the plain unlocked image, F9 resets the frequency to Auto and that module stops POSTing again — hence the `_2933` image.
 
+## Performance: 2933 vs 3200
+
+How much does 2933 cost? Measured with the stock **16 GB Kingston 9905700-122.A00G** (DDR4-3200, single rank) at 2933 vs 3200 MT/s (same session, idle host, best/average of 3 runs).
+
+| Synthetic | 2933 | 3200 | Difference |
+|---|---|---|---|
+| STREAM Copy, 1 process | 19.2 GB/s | 20.7 GB/s | +7.5 % |
+| STREAM Triad, 1 process | 14.7 GB/s | 15.9 GB/s | +8.2 % |
+| STREAM Copy, 2 / 4 processes | 9.1 / 10.9 GB/s | 9.0 / 11.3 GB/s | ~0 / +4 % |
+| Random read latency, 64 MB (tinymembench) | 125.2 ns | 119.7 ns | −4.4 % |
+
+| Real world | 2933 | 3200 | Difference |
+|---|---|---|---|
+| `xz -T4`, 400 MB in RAM | 76.45 s | 75.63 s | +1.1 % |
+| 7-Zip 24.09 benchmark, 4 threads | 10726 MIPS | 10747 MIPS | +0.2 % |
+| 7-Zip 24.09 benchmark, 1 thread | 4969 MIPS | 5034 MIPS | +1.3 % |
+| GCC `-O2` build of SQLite 3.46.1 | 31.57 s | 31.36 s | +0.7 % |
+| SQLite in-memory workload (Python) | 7.25 s | 7.16 s | +1.2 % |
+| Jellyfin QSV 4K HDR → 1080p tone-mapped, 1 stream | 65 fps | 68 fps | +4.1 % |
+| Jellyfin QSV, 2 simultaneous streams | 36 + 36 fps | 38 + 38 fps | +5.6 % |
+
+CPU workloads gain only ~1 %. The single memory channel, not the frequency, is the bottleneck once several cores compete. The iGPU (Quick Sync transcoding) is the most memory-sensitive real workload, at ~4–6 %. The 32 GB dual-rank Kingston at 2933 performed the same as this module at 2933.
+
 ## What is changed
 
 Default values in the three uncompressed AMI `StdDefaults` copies (no checksums there, no Boot Guard):
@@ -83,4 +117,4 @@ The script verifies the input hash and every byte it changes. Analysis done with
 
 ## License
 
-Script and docs: public domain ([The Unlicense](LICENSE)). The images are derived from GMKtec's official BIOS and remain their owners' property; provided as-is, without warranty.
+Script and docs: public domain ([The Unlicense](LICENSE)). The BIOS images are derived from GMKtec's official BIOS and remain their owners' property; provided as-is, without warranty.
